@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Persons>
+	<Person>
+		<Name>Tom</Name>
+		<Age>28</Age>
+		<Career>Programer</Career>
+		<Interests>
+			<Interest>Coding</Interest>
+			<Interest>Eating</Interest>		
+		</Interests>	
+	</Person>
+	
+	<Person>
+		<Name>Jack</Name>
+		<Age>31</Age>
+		<Career>Worker</Career>
+		<Interests>
+			<Interest>Chess</Interest>
+			<Interest>Drawing</Interest>		
+		</Interests>	
+	</Person>
+</Persons>

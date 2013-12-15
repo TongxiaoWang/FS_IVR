@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<IVR>	
+
+	<!-- Declare prompt here -->
+	<Prompts>
+
+		<!-- NoInput Prompt -->
+		<Prompt name="p_noInput">
+			<BargeIn>true</BargeIn>
+			<Phrase>100000021.wav</Phrase>			
+		</Prompt>
+		
+		<!-- NoMatch Prompt -->
+		<Prompt name="p_noMatch">
+			<BargeIn>true</BargeIn>
+			<Phrase>100000014.wav</Phrase>		
+		</Prompt>
+
+		<Prompt name="p_welcome">
+			<BargeIn>true</BargeIn>
+			<Phrase>welcome.wav</Phrase>
+		</Prompt>
+				
+		<Prompt name="p_languageMenu">
+			<BargeIn>true</BargeIn>
+			<Phrase>languageMenu.wav</Phrase>
+		</Prompt>
+		
+		<Prompt name="p_chineseMenu">
+			<BargeIn>true</BargeIn>
+			<Phrase>chineseMenu.wav</Phrase>		
+		</Prompt>
+
+		<Prompt name="p_pwdService">
+			<BargeIn>true</BargeIn>
+			<Phrase>122100004.wav</Phrase>		
+		</Prompt>
+
+		<Prompt name="p_pwdOk">
+			<BargeIn>true</BargeIn>
+			<Phrase>122100007.wav</Phrase>		
+		</Prompt>
+
+	</Prompts>
+	
+	
+	<!-- Declare grammar here -->
+	<Grammars>
+		
+		<!-- collectPwd lens 3~6  -->
+		<Grammar name="g_collectPwd">
+			<MaxLen>6</MaxLen>
+			<Terminator>#</Terminator>
+			<Timeout>5000</Timeout>
+			<Express>^147\d+</Express>
+		</Grammar>
+	
+	</Grammars>
+
+	
+	<!-- Declare var here not supported for the moment>
+	<Vars>
+		<Var Name="$${ANI}"/>
+		<Var Name="$${DNIS}"/>
+		<Var Name="$${ChannelId}"/>
+		<Var Nam="$${CallId}"/>
+	</Vars -->
+
+	
+	<!-- Declare node here -->
+	<Nodes>
+		<!-- RootNode -->
+		<RootNode name="root">
+			<NextNode>welcome</NextNode>	
+		</RootNode>
+
+		<!-- NoInput node -->
+		<GotoNode name="NoInput">
+			<NextNode>exit</NextNode>
+			<Prompts>
+				<Prompt>p_noInput</Prompt>
+			</Prompts>
+			<Max_NoInput>3</Max_NoInput>
+			<Max_NoMatch>3</Max_NoMatch>
+		</GotoNode>
+
+		<!-- NoMatch node -->
+		<GotoNode name="NoMatch">
+			<NextNode>exit</NextNode>
+			<Prompts>
+				<Prompt>p_noMatch</Prompt>
+			</Prompts>
+			<Max_NoInput>3</Max_NoInput>
+			<Max_NoMatch>3</Max_NoMatch>
+		</GotoNode>	
+
+		<!-- Welcome announce node -->
+		<AnnNode name="welcome">
+			<NextNode>languageMenu</NextNode>
+			<Prompts>
+				<Prompt>p_welcome</Prompt>
+			</Prompts>
+		</AnnNode>
+	
+		<!-- Language Menu -->
+		<MenuNode name="languageMenu">
+			<Prompts>
+				<Prompt>p_languageMenu</Prompt>			
+			</Prompts>
+			<Choices>
+				<Choice name="chinese" dtmf="1" nextNode="chineseMenu"/>
+				<Choice name="english" dtmf="2" nextNode="exit"/>
+				<Choice name="japanese" dtmf="3" nextNode="exit"/>
+			</Choices>
+			<Timeout>8000</Timeout>
+			<NoInput>NoInput</NoInput>
+			<NoMatch>NoMatch</NoMatch>
+		</MenuNode>
+		
+		<!-- Chinese Menu -->
+		<MenuNode name="chineseMenu">
+			<Prompts>
+				<Prompt>p_chineseMenu</Prompt>			
+			</Prompts>		
+			<Choices>
+				<Choice name="cardApply" dtmf="1" nextNode="cardApply"/>
+				<Choice name="pwdService" dtmf="2" nextNode="pwdService"/>
+				<Choice name="lostReport" dtmf="3" nextNode="lostReport"/>
+				<Choice name="accountService" dtmf="4" nextNode="accountService"/>
+				<Choice name="cardFunc" dtmf="5" nextNode="cardFunc"/>
+				<Choice name="market" dtmf="6" nextNode="market"/>
+				<Choice name="cardActive" dtmf="7" nextNode="cardActive"/>
+				<Choice name="personalMenu" dtmf="8" nextNode="personalMenu"/>
+				<Choice name="agentService" dtmf="0" nextNode="agentService"/>
+			</Choices>
+			<Timeout>8000</Timeout>
+			<NoInput>NoInput</NoInput>
+			<NoMatch>NoMatch</NoMatch>
+		</MenuNode>
+		
+		<!-- Password Service -->
+		<PromptCollectNode name="pwdService">
+			<NextNode>pwdOk</NextNode>
+			<NoInput>NoInput</NoInput>
+			<NoMatch>NoMatch</NoMatch>
+			<Prompts>
+				<Prompt>p_pwdService</Prompt>
+			</Prompts>
+			<Grammars>
+				<Grammar>g_collectPwd</Grammar>
+			</Grammars>
+		</PromptCollectNode>
+
+		<PromptCollectNode name="Demo">
+			<MinLen>2</MinLen>
+			<MaxLen>18</MaxLen>
+			
+		</PromptCollectNode>
+
+		<!-- Password ok announce node -->
+		<AnnNode name="pwdOk">
+			<NextNode>exit</NextNode>
+			<Prompts>
+				<Prompt>p_pwdOk</Prompt>
+			</Prompts>
+		</AnnNode>
+		
+		<!-- ExitNode -->
+		<ExitNode name="exit"/>
+		
+	</Nodes>
+</IVR>
