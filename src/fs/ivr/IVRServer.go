@@ -32,8 +32,6 @@ func InitIVRServer(port int) {
 
 	ivr.persistor = dbPersistor
 
-	LoadIVRConfig(Ivr_Config_File)
-
 	l4g.Info("IVRSever listening TCP :%d", port)
 
 	for {
@@ -56,6 +54,8 @@ func handleClient(clientConn net.Conn) {
 
 	defer delete(ivr.channelMap, ivrChannel.ChannelName)
 	defer clientConn.Close()
+
+	LoadIVRConfig(Ivr_Config_File)
 
 	ivr.ExecuteCallFlow("root", ivrChannel)
 

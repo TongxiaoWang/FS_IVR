@@ -30,8 +30,9 @@ var ivrPromptMap map[string]Prompt = make(map[string]Prompt)
 var ivrGrammarMap map[string]Grammar = make(map[string]Grammar)
 
 type IVR struct {
-	channelMap map[string]IVRChannel
-	persistor  Persistor
+	channelMap       map[string]IVRChannel
+	persistor        Persistor
+	confFileLoadTime time.Time
 }
 
 func NewIVR() *IVR {
@@ -63,7 +64,7 @@ func NewIVRChannel(clientConn net.Conn) *IVRChannel {
 	ivrChannel.Dtmf = make(chan string, Max_DTMF_Length)
 	ivrChannel.ChanCreateTime = time.Now()
 	ivrChannel.ChannelState = IVRChannel_State_Init
-	ivrChannel.PlaybackDone = make(chan bool)
+	ivrChannel.PlaybackDone = make(chan bool, 0)
 	ivrChannel.CallParams = make(map[string]string)
 	ivrChannel.ChannelHangup = make(chan bool)
 	ivrChannel.NoInputTimes = 0
@@ -97,7 +98,11 @@ func (channel *IVRChannel) OnEvent(event *eventsocket.Event) {
 					channel.Dtmf <- dtmf
 				}
 				if "PLAYBACK_STOP" == eventName {
-					channel.PlaybackDone <- true
+					if playStatus := event.Header["Playback-Status"]; "break" == playStatus {
+						channel.PlaybackDone <- true
+					} else {
+						channel.PlaybackDone <- false
+					}
 				}
 
 				if "CHANNEL_ANSWER" == eventName {
@@ -133,13 +138,30 @@ type AnnNode struct {
 	NextNode string
 }
 
-func executePrompt(prompt Prompt, ivrChannel *IVRChannel) {
-	if prompt.BargeIn {
-		ivrChannel.Esocket.BargeIn(true)
-	} else {
-		ivrChannel.Esocket.BargeIn(false)
+func executePrompt(prompts []string, ivrChannel *IVRChannel) {
+
+	if len(prompts) > 0 {
+		for _, promptName := range prompts {
+			// Find prompt from ivrPromptMap by promptName
+			if prompt, ok := ivrPromptMap[promptName]; ok {
+				if prompt.BargeIn {
+					ivrChannel.Esocket.BargeIn(true)
+				} else {
+					ivrChannel.Esocket.BargeIn(false)
+				}
+				ivrChannel.Esocket.PlayAnn(prompt.Phrase[0], prompt.PName, ivrChannel.ChannelId)
+
+				done := <-ivrChannel.PlaybackDone
+				l4g.Debug("ExecutePrompt done =%t", done)
+				if done {
+					break
+				}
+			} else {
+				l4g.Warn("Prompt not find for promptName=%s", promptName)
+			}
+		}
 	}
-	ivrChannel.Esocket.PlayAnn(prompt.Phrase[0], prompt.PName, ivrChannel.ChannelId)
+
 }
 
 func (node AnnNode) Execute(ivrChannel *IVRChannel) (string, error) {
@@ -149,17 +171,8 @@ func (node AnnNode) Execute(ivrChannel *IVRChannel) (string, error) {
 	}
 
 	ivrChannel.ActiveNode = node.NodeName
-	if len(node.Prompts.Prompt) > 0 {
-		for _, promptName := range node.Prompts.Prompt {
-			// Find prompt from ivrPromptMap by promptName
-			if prompt, ok := ivrPromptMap[promptName]; ok {
-				executePrompt(prompt, ivrChannel)
-				<-ivrChannel.PlaybackDone
-			} else {
-				l4g.Warn("Prompt not find for promptName=%s", promptName)
-			}
-		}
-	}
+
+	executePrompt(node.Prompts.Prompt, ivrChannel)
 
 	return node.NextNode, nil
 }
@@ -185,17 +198,21 @@ func (node MenuNode) Execute(ivrChannel *IVRChannel) (string, error) {
 		<-ivrChannel.Dtmf
 	}
 
-	if len(node.Prompts.Prompt) > 0 {
-		for _, promptName := range node.Prompts.Prompt {
-			// Find prompt from ivrPromptMap by promptName
-			if prompt, ok := ivrPromptMap[promptName]; ok {
-				executePrompt(prompt, ivrChannel)
-				<-ivrChannel.PlaybackDone
-			} else {
-				l4g.Warn("Prompt not find for promptName=%s", promptName)
+	executePrompt(node.Prompts.Prompt, ivrChannel)
+
+	/*
+		if len(node.Prompts.Prompt) > 0 {
+			for _, promptName := range node.Prompts.Prompt {
+				// Find prompt from ivrPromptMap by promptName
+				if prompt, ok := ivrPromptMap[promptName]; ok {
+					executePrompt(prompt, ivrChannel)
+					<-ivrChannel.PlaybackDone
+				} else {
+					l4g.Warn("Prompt not find for promptName=%s", promptName)
+				}
 			}
 		}
-	}
+	*/
 
 	ivrChannel.Esocket.StartDTMF()
 	defer ivrChannel.Esocket.StopDTMF()
@@ -244,17 +261,21 @@ func (node GotoNode) Execute(ivrChannel *IVRChannel) (string, error) {
 		<-ivrChannel.Dtmf
 	}
 
-	if len(node.Prompts.Prompt) > 0 {
-		for _, promptName := range node.Prompts.Prompt {
-			// Find prompt from ivrPromptMap by promptName
-			if prompt, ok := ivrPromptMap[promptName]; ok {
-				executePrompt(prompt, ivrChannel)
-				<-ivrChannel.PlaybackDone
-			} else {
-				l4g.Warn("Prompt not find for promptName=%s", promptName)
+	executePrompt(node.Prompts.Prompt, ivrChannel)
+
+	/*
+		if len(node.Prompts.Prompt) > 0 {
+			for _, promptName := range node.Prompts.Prompt {
+				// Find prompt from ivrPromptMap by promptName
+				if prompt, ok := ivrPromptMap[promptName]; ok {
+					executePrompt(prompt, ivrChannel)
+					<-ivrChannel.PlaybackDone
+				} else {
+					l4g.Warn("Prompt not find for promptName=%s", promptName)
+				}
 			}
 		}
-	}
+	*/
 
 	if ivrChannel.NoInputTimes >= node.Max_NoInput {
 		return node.NextNode, nil
@@ -319,17 +340,21 @@ func (node PromptCollectNode) Execute(ivrChannel *IVRChannel) (string, error) {
 		<-ivrChannel.Dtmf
 	}
 
-	if len(node.Prompts.Prompt) > 0 {
-		for _, promptName := range node.Prompts.Prompt {
-			// Find prompt from ivrPromptMap by promptName
-			if prompt, ok := ivrPromptMap[promptName]; ok {
-				executePrompt(prompt, ivrChannel)
-				<-ivrChannel.PlaybackDone
-			} else {
-				l4g.Warn("Prompt not find for promptName=%s", promptName)
+	executePrompt(node.Prompts.Prompt, ivrChannel)
+
+	/*
+		if len(node.Prompts.Prompt) > 0 {
+			for _, promptName := range node.Prompts.Prompt {
+				// Find prompt from ivrPromptMap by promptName
+				if prompt, ok := ivrPromptMap[promptName]; ok {
+					executePrompt(prompt, ivrChannel)
+					<-ivrChannel.PlaybackDone
+				} else {
+					l4g.Warn("Prompt not find for promptName=%s", promptName)
+				}
 			}
 		}
-	}
+	*/
 
 	ivrChannel.Esocket.StartDTMF()
 	defer ivrChannel.Esocket.StopDTMF()
@@ -393,7 +418,7 @@ func (ivr *IVR) ExecuteCallFlow(nodeId string, ivrChannel *IVRChannel) {
 	if nodeId != "" && len(nodeId) > 0 {
 		if node, ok := ivrNodeMap[nodeId]; ok {
 			nodeId, err := node.Execute(ivrChannel)
-			ivr.persistor.Persist(ivrChannel) // Persistor IVR data.
+			// ivr.persistor.Persist(ivrChannel) // Persistor IVR data.
 			if err != nil {
 				l4g.Error("Execute Node failure for :%s", err.Error())
 

@@ -7,6 +7,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
+	"os"
 )
 
 type IVRConfig struct {
@@ -65,6 +66,20 @@ type GrammarEntity struct {
 }
 
 func LoadIVRConfig(name string) {
+
+	fileInfo, err := os.Stat(name)
+	if err != nil {
+		l4g.Error("Load Ivr config file failure for : %s", err.Error())
+		return
+	}
+
+	l4g.Debug("ConfigFile modTime=%d,loadTime=%d", fileInfo.ModTime(), ivr.confFileLoadTime)
+	if fileInfo.ModTime().UnixNano() <= ivr.confFileLoadTime.UnixNano() {
+		return
+	}
+
+	ivr.confFileLoadTime = fileInfo.ModTime()
+
 	l4g.Trace("Init ivr config file from: %s", name)
 	content, err := ioutil.ReadFile(name)
 	if err != nil {
@@ -73,8 +88,8 @@ func LoadIVRConfig(name string) {
 	}
 
 	// l4g.Debug("Load config content : %s", string(content))
-	var ivr IVRConfig
-	err = xml.Unmarshal(content, &ivr)
+	var ivrConfig IVRConfig
+	err = xml.Unmarshal(content, &ivrConfig)
 	if err != nil {
 		l4g.Error("Unmarshal config xml failure for %s", err.Error())
 		return
@@ -82,58 +97,58 @@ func LoadIVRConfig(name string) {
 
 	// fmt.Println(ivr)
 
-	if len(ivr.Prompts.Prompt) > 0 {
-		for _, prompt := range ivr.Prompts.Prompt {
+	if len(ivrConfig.Prompts.Prompt) > 0 {
+		for _, prompt := range ivrConfig.Prompts.Prompt {
 			ivrPromptMap[prompt.PName] = prompt
 		}
 	} else {
 		l4g.Warn("Init IVR config no prompt find ...")
 	}
 
-	if len(ivr.Grammars.Grammar) > 0 {
-		for _, grammar := range ivr.Grammars.Grammar {
+	if len(ivrConfig.Grammars.Grammar) > 0 {
+		for _, grammar := range ivrConfig.Grammars.Grammar {
 			ivrGrammarMap[grammar.GName] = grammar
 		}
 	} else {
 		l4g.Warn("Init IVR config no grammar find ...")
 	}
 
-	if len(ivr.Nodes.RootNode.NodeName) > 0 {
-		ivrNodeMap[ivr.Nodes.RootNode.NodeName] = ivr.Nodes.RootNode
+	if len(ivrConfig.Nodes.RootNode.NodeName) > 0 {
+		ivrNodeMap[ivrConfig.Nodes.RootNode.NodeName] = ivrConfig.Nodes.RootNode
 	} else {
 		fmt.Println("No RootNode find ------------------------------------------------ ")
 	}
 
-	if len(ivr.Nodes.ExitNode.NodeName) > 0 {
-		ivrNodeMap[ivr.Nodes.ExitNode.NodeName] = ivr.Nodes.ExitNode
+	if len(ivrConfig.Nodes.ExitNode.NodeName) > 0 {
+		ivrNodeMap[ivrConfig.Nodes.ExitNode.NodeName] = ivrConfig.Nodes.ExitNode
 	} else {
 		fmt.Println("No ExitNode find ------------------------------------------------ ")
 	}
 
-	if len(ivr.Nodes.GotoNode) > 0 {
-		for _, gotoNode := range ivr.Nodes.GotoNode {
+	if len(ivrConfig.Nodes.GotoNode) > 0 {
+		for _, gotoNode := range ivrConfig.Nodes.GotoNode {
 			ivrNodeMap[gotoNode.NodeName] = gotoNode
 		}
 	}
 
-	if len(ivr.Nodes.AnnNode) > 0 {
-		for _, annNode := range ivr.Nodes.AnnNode {
+	if len(ivrConfig.Nodes.AnnNode) > 0 {
+		for _, annNode := range ivrConfig.Nodes.AnnNode {
 			ivrNodeMap[annNode.NodeName] = annNode
 		}
 	}
 
-	if len(ivr.Nodes.MenuNode) > 0 {
-		for _, menuNode := range ivr.Nodes.MenuNode {
+	if len(ivrConfig.Nodes.MenuNode) > 0 {
+		for _, menuNode := range ivrConfig.Nodes.MenuNode {
 			ivrNodeMap[menuNode.NodeName] = menuNode
 		}
 	}
 
-	if len(ivr.Nodes.PromptCollectNode) > 0 {
-		for _, pcNode := range ivr.Nodes.PromptCollectNode {
+	if len(ivrConfig.Nodes.PromptCollectNode) > 0 {
+		for _, pcNode := range ivrConfig.Nodes.PromptCollectNode {
 			ivrNodeMap[pcNode.NodeName] = pcNode
 		}
 	}
 
-	l4g.Trace("Load ivr config prompts=%d,grammars=%d,nodes=%d", len(ivrPromptMap), len(ivrGrammarMap), len(ivrNodeMap))
+	l4g.Trace("Load ivrConfig prompts=%d,grammars=%d,nodes=%d", len(ivrPromptMap), len(ivrGrammarMap), len(ivrNodeMap))
 
 }

@@ -61,10 +61,8 @@ type ESocket struct {
 	textReader *textproto.Reader
 	reader     *bufio.Reader
 	err        chan error
-	api        chan *Event
 	cmd        chan *Event
 	Running    bool
-	// event      chan *Event
 	Dispatcher EventDispatcher
 }
 
@@ -87,11 +85,9 @@ func NewESocket(conn net.Conn, dispatcher EventDispatcher) *ESocket {
 	esocket.reader = bufio.NewReaderSize(conn, readerBufSize)
 	esocket.textReader = textproto.NewReader(esocket.reader)
 	esocket.err = make(chan error)
-	esocket.api = make(chan *Event)
 	esocket.cmd = make(chan *Event)
 	esocket.Dispatcher = dispatcher
 	esocket.Running = true
-	// esocket.event = make(chan *Event, eventQueueSize)
 	return esocket
 }
 
@@ -217,10 +213,8 @@ func (es *ESocket) handleESRequest(request *ESRequest) (string, error) {
 }
 
 func (es *ESocket) Close() {
-	close(es.api)
 	close(es.cmd)
 	close(es.err)
-	// close(es.event)
 	es.conn.Close()
 	es = nil
 }
@@ -279,7 +273,6 @@ func (es *ESocket) recEvent() bool {
 		praseHeader(msg, event, true)
 		l4g.Debug("Get cmd response : %s", event.Header)
 		es.cmd <- event
-	case Header_Api_Response:
 
 	case Header_Text_Json:
 		praseHeader(msg, event, true)
@@ -308,7 +301,6 @@ func (es *ESocket) recEvent() bool {
 		es.Dispatcher.OnEvent(event)
 		// es.event <- event
 
-	case Header_Text_Plain:
 	case Header_Text_Disconn:
 		l4g.Debug("Disconnect-notice rec ... ")
 		event.Header["Event-Name"] = "HANGUP"
