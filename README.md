@@ -11,7 +11,7 @@ You can run it on Linux OS directly as following command :
 		chmod 775 *
 		./src
 		
-Notice : When you run it you must edit ivr.xml file first,In this file you can edit your call flow with *Prompt*,*Grammar* and *Node*.
+Notice : When you run it you must edit ivr.xml file first,In this file you can edit your own call flow with *Prompt*,*Grammar* and *Node*.
 
 On other Platform you must recompile and then run it.	
 
